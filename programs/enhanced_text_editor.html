@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>📝 Продвинутый Текстовый Редактор</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .back-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            z-index: 1000;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        .settings-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        .editor-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 80px 20px 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .editor-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .editor-title {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .toolbar-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .toolbar-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .toolbar-btn.active {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: rgba(76, 175, 80, 0.5);
+        }
+        
+        .editor-main {
+            flex: 1;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .editor-area {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .editor-text {
+            flex: 1;
+            padding: 20px;
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333;
+            background: transparent;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+        
+        .editor-sidebar {
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .stats-panel {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stats-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #FFD700;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .themes-panel {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .theme-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .theme-btn:hover {
+            transform: scale(1.1);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .theme-btn.active {
+            border-color: #FFD700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .export-panel {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .export-btn {
+            width: 100%;
+            margin: 5px 0;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .export-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .editor-main {
+                flex-direction: column;
+            }
+            
+            .editor-sidebar {
+                width: 100%;
+                flex-direction: row;
+                overflow-x: auto;
+            }
+            
+            .stats-panel, .themes-panel, .export-panel {
+                min-width: 250px;
+            }
+            
+            .toolbar {
+                justify-content: flex-start;
+                overflow-x: auto;
+            }
+        }
+        
+        /* Theme variations */
+        .theme-dark {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        }
+        
+        .theme-green {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+        
+        .theme-orange {
+            background: linear-gradient(135deg, #FF9800 0%, #FF5722 100%);
+        }
+        
+        .theme-purple {
+            background: linear-gradient(135deg, #9C27B0 0%, #673AB7 100%);
+        }
+        
+        .theme-blue {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        /* Text formatting styles */
+        .editor-text.mono {
+            font-family: 'Courier New', monospace;
+        }
+        
+        .editor-text.serif {
+            font-family: 'Times New Roman', serif;
+        }
+        
+        .editor-text.sans {
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body id="bodyElement" class="theme-blue">
+    <a href="../index.html" class="back-btn" title="Вернуться к лаунчеру">←</a>
+    <div class="settings-btn" id="settingsBtn" title="Настройки">⚙️</div>
+    
+    <div class="editor-container">
+        <div class="editor-header">
+            <h1 class="editor-title">📝 Продвинутый Текстовый Редактор</h1>
+            <p>Многофункциональный редактор с живой статистикой и экспортом</p>
+        </div>
+        
+        <div class="toolbar">
+            <button class="toolbar-btn" onclick="formatText('bold')" id="boldBtn">
+                <strong>B</strong> Жирный
+            </button>
+            <button class="toolbar-btn" onclick="formatText('italic')" id="italicBtn">
+                <em>I</em> Курсив
+            </button>
+            <button class="toolbar-btn" onclick="formatText('underline')" id="underlineBtn">
+                <u>U</u> Подчёркнутый
+            </button>
+            <button class="toolbar-btn" onclick="changeFontFamily('mono')" id="monoBtn">
+                🔤 Моноширинный
+            </button>
+            <button class="toolbar-btn" onclick="changeFontFamily('serif')" id="serifBtn">
+                📚 Serif
+            </button>
+            <button class="toolbar-btn" onclick="changeFontFamily('sans')" id="sansBtn">
+                🎯 Sans-serif
+            </button>
+            <button class="toolbar-btn" onclick="clearText()">
+                🗑️ Очистить
+            </button>
+            <button class="toolbar-btn" onclick="insertTemplate()">
+                📋 Шаблон
+            </button>
+        </div>
+        
+        <div class="editor-main">
+            <div class="editor-area">
+                <textarea 
+                    class="editor-text mono" 
+                    id="textEditor" 
+                    placeholder="Начните писать здесь... 
+                    
+Возможности редактора:
+• Живая статистика текста
+• Экспорт в различные форматы
+• Смена тем оформления
+• Форматирование текста
+• Автосохранение
+• Поддержка горячих клавиш"
+                    oninput="updateStats()"
+                    onselectionchange="updateSelection()"></textarea>
+            </div>
+            
+            <div class="editor-sidebar">
+                <div class="stats-panel">
+                    <div class="stats-title">📊 Статистика</div>
+                    <div class="stat-item">
+                        <span>Символов:</span>
+                        <span id="charCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Слов:</span>
+                        <span id="wordCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Абзацев:</span>
+                        <span id="paragraphCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Строк:</span>
+                        <span id="lineCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Время чтения:</span>
+                        <span id="readTime">0 мин</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Выделено:</span>
+                        <span id="selectedCount">0</span>
+                    </div>
+                </div>
+                
+                <div class="themes-panel">
+                    <div class="stats-title">🎨 Темы</div>
+                    <div class="theme-grid">
+                        <div class="theme-btn theme-blue active" onclick="changeTheme('blue')" title="Синяя"></div>
+                        <div class="theme-btn theme-dark" onclick="changeTheme('dark')" title="Тёмная"></div>
+                        <div class="theme-btn theme-green" onclick="changeTheme('green')" title="Зелёная"></div>
+                        <div class="theme-btn theme-orange" onclick="changeTheme('orange')" title="Оранжевая"></div>
+                        <div class="theme-btn theme-purple" onclick="changeTheme('purple')" title="Фиолетовая"></div>
+                    </div>
+                </div>
+                
+                <div class="export-panel">
+                    <div class="stats-title">💾 Экспорт</div>
+                    <button class="export-btn" onclick="saveAsText()">
+                        📄 Сохранить как TXT
+                    </button>
+                    <button class="export-btn" onclick="saveAsHTML()">
+                        🌐 Экспорт в HTML
+                    </button>
+                    <button class="export-btn" onclick="copyToClipboard()">
+                        📋 Копировать в буфер
+                    </button>
+                    <button class="export-btn" onclick="printText()">
+                        🖨️ Печать
+                    </button>
+                    <label class="export-btn" for="fileInput">
+                        📁 Загрузить файл
+                    </label>
+                    <input type="file" id="fileInput" class="file-input" onchange="loadFile(event)" accept=".txt,.html,.md">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentTheme = 'blue';
+        let autoSaveInterval;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSavedText();
+            updateStats();
+            startAutoSave();
+            setupKeyboardShortcuts();
+        });
+        
+        // Text statistics
+        function updateStats() {
+            const text = document.getElementById('textEditor').value;
+            const chars = text.length;
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            const paragraphs = text.trim() ? text.split(/\n\s*\n/).length : 0;
+            const lines = text.split('\n').length;
+            const readTime = Math.ceil(words / 200); // Average reading speed
+            
+            document.getElementById('charCount').textContent = chars;
+            document.getElementById('wordCount').textContent = words;
+            document.getElementById('paragraphCount').textContent = paragraphs;
+            document.getElementById('lineCount').textContent = lines;
+            document.getElementById('readTime').textContent = readTime + ' мин';
+            
+            // Auto-save to localStorage
+            localStorage.setItem('editorText', text);
+        }
+        
+        function updateSelection() {
+            const textarea = document.getElementById('textEditor');
+            const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+            document.getElementById('selectedCount').textContent = selectedText.length;
+        }
+        
+        // Theme management
+        function changeTheme(theme) {
+            const body = document.getElementById('bodyElement');
+            body.className = 'theme-' + theme;
+            currentTheme = theme;
+            
+            // Update active theme button
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.theme-' + theme).classList.add('active');
+            
+            localStorage.setItem('editorTheme', theme);
+        }
+        
+        // Text formatting
+        function formatText(command) {
+            const textarea = document.getElementById('textEditor');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selectedText = textarea.value.substring(start, end);
+            
+            if (selectedText) {
+                let formattedText = selectedText;
+                
+                switch(command) {
+                    case 'bold':
+                        formattedText = `**${selectedText}**`;
+                        break;
+                    case 'italic':
+                        formattedText = `*${selectedText}*`;
+                        break;
+                    case 'underline':
+                        formattedText = `__${selectedText}__`;
+                        break;
+                }
+                
+                textarea.value = textarea.value.substring(0, start) + formattedText + textarea.value.substring(end);
+                textarea.focus();
+                textarea.setSelectionRange(start + formattedText.length, start + formattedText.length);
+                updateStats();
+            }
+        }
+        
+        function changeFontFamily(fontFamily) {
+            const textarea = document.getElementById('textEditor');
+            textarea.className = 'editor-text ' + fontFamily;
+            
+            // Update active font button
+            document.querySelectorAll('[id$="Btn"]').forEach(btn => {
+                if (btn.id.includes('mono') || btn.id.includes('serif') || btn.id.includes('sans')) {
+                    btn.classList.remove('active');
+                }
+            });
+            document.getElementById(fontFamily + 'Btn').classList.add('active');
+        }
+        
+        // File operations
+        function saveAsText() {
+            const text = document.getElementById('textEditor').value;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'document.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function saveAsHTML() {
+            const text = document.getElementById('textEditor').value;
+            const htmlContent = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Экспортированный документ</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1, h2, h3 { color: #333; }
+        p { margin-bottom: 1em; }
+    </style>
+</head>
+<body>
+    <pre style="white-space: pre-wrap; font-family: inherit;">${text}</pre>
+</body>
+</html>`;
+            
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'document.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function copyToClipboard() {
+            const text = document.getElementById('textEditor').value;
+            navigator.clipboard.writeText(text).then(function() {
+                alert('Текст скопирован в буфер обмена!');
+            }).catch(function() {
+                // Fallback for older browsers
+                const textarea = document.getElementById('textEditor');
+                textarea.select();
+                document.execCommand('copy');
+                alert('Текст скопирован в буфер обмена!');
+            });
+        }
+        
+        function printText() {
+            const text = document.getElementById('textEditor').value;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Печать документа</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; }
+                        pre { white-space: pre-wrap; font-family: inherit; }
+                    </style>
+                </head>
+                <body>
+                    <pre>${text}</pre>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+        
+        function loadFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('textEditor').value = e.target.result;
+                    updateStats();
+                };
+                reader.readAsText(file);
+            }
+        }
+        
+        // Utility functions
+        function clearText() {
+            if (confirm('Вы уверены, что хотите очистить весь текст?')) {
+                document.getElementById('textEditor').value = '';
+                updateStats();
+            }
+        }
+        
+        function insertTemplate() {
+            const templates = [
+                "# Заголовок\n\n## Подзаголовок\n\nТекст параграфа...",
+                "Дата: " + new Date().toLocaleDateString('ru-RU') + "\n\nТема: \n\nСодержание:\n\n",
+                "## Список дел\n\n- [ ] Задача 1\n- [ ] Задача 2\n- [ ] Задача 3\n\n",
+                "**Отчёт**\n\nПериод: \nАвтор: \n\nОсновные пункты:\n1. \n2. \n3. \n\nВыводы:\n"
+            ];
+            
+            const template = templates[Math.floor(Math.random() * templates.length)];
+            const textarea = document.getElementById('textEditor');
+            const start = textarea.selectionStart;
+            textarea.value = textarea.value.substring(0, start) + template + textarea.value.substring(start);
+            updateStats();
+        }
+        
+        function loadSavedText() {
+            const savedText = localStorage.getItem('editorText');
+            const savedTheme = localStorage.getItem('editorTheme');
+            
+            if (savedText) {
+                document.getElementById('textEditor').value = savedText;
+            }
+            
+            if (savedTheme) {
+                changeTheme(savedTheme);
+            }
+        }
+        
+        function startAutoSave() {
+            autoSaveInterval = setInterval(function() {
+                const text = document.getElementById('textEditor').value;
+                localStorage.setItem('editorText', text);
+                localStorage.setItem('editorLastSaved', new Date().toISOString());
+            }, 30000); // Auto-save every 30 seconds
+        }
+        
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey || e.metaKey) {
+                    switch(e.key) {
+                        case 's':
+                            e.preventDefault();
+                            saveAsText();
+                            break;
+                        case 'c':
+                            if (e.shiftKey) {
+                                e.preventDefault();
+                                copyToClipboard();
+                            }
+                            break;
+                        case 'p':
+                            e.preventDefault();
+                            printText();
+                            break;
+                        case 'n':
+                            e.preventDefault();
+                            clearText();
+                            break;
+                    }
+                }
+                
+                // Tab for indentation
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const textarea = document.getElementById('textEditor');
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    textarea.value = textarea.value.substring(0, start) + '    ' + textarea.value.substring(end);
+                    textarea.setSelectionRange(start + 4, start + 4);
+                    updateStats();
+                }
+            });
+        }
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            clearInterval(autoSaveInterval);
+        });
+    </script>
+</body>
+</html>
