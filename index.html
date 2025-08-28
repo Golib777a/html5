@@ -422,6 +422,10 @@
             background: rgba(255, 255, 255, 0.3);
             transform: scale(1.05);
         }
+
+        body.dark-theme {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        }
         
         @media (max-width: 768px) {
             .main-title {
@@ -496,7 +500,7 @@
                     <div>🎮 <strong id="gameCount">7</strong> игр</div>
                 </div>
                 <div class="stat-card">
-                    <div>🛠️ <strong id="programCount">5</strong> программ</div>
+                    <div>🛠️ <strong id="programCount">6</strong> программ</div>
                 </div>
                 <div class="stat-card">
                     <div>🏆 Последняя: <strong id="lastPlayed">-</strong></div>
@@ -617,7 +621,7 @@
                 🏆 Любимая игра: <span id="favoriteGame">-</span>
             </div>
         </div>
-        <p>© 2024 HTML5 Игровая Коллекция | 7 игр и 5 программ | Все приложения работают в браузере без установки</p>
+        <p>© 2024 HTML5 Игровая Коллекция | 7 игр и 6 программ | Все приложения работают в браузере без установки</p>
     </div>
     
     <!-- Settings Modal -->
@@ -653,7 +657,7 @@
                 </div>
             </div>
             
-            <button class="close-btn" onclick="closeSettings()">Закрыть</button>
+            <button class="close-btn">Закрыть</button>
         </div>
     </div>
 
@@ -684,9 +688,6 @@
             }
         }
         
-        // Initialize particles on load
-        createParticles();
-        
         // Game statistics and settings
         let gameStats = {
             sessionCount: 0,
@@ -705,7 +706,11 @@
         function loadGameData() {
             const saved = localStorage.getItem('html5GameCollection');
             if (saved) {
-                gameStats = { ...gameStats, ...JSON.parse(saved) };
+                const savedStats = JSON.parse(saved);
+                gameStats = { ...gameStats, ...savedStats };
+                 if (savedStats.settings) {
+                    gameStats.settings = { ...gameStats.settings, ...savedStats.settings };
+                }
             }
             updateStats();
             updateSettingsUI();
@@ -722,49 +727,61 @@
             document.getElementById('totalTime').textContent = Math.floor(gameStats.totalPlayTime / 60) + 'м';
             document.getElementById('lastPlayed').textContent = gameStats.lastPlayed || '-';
             
-            // Find favorite game
             let favorite = '-';
             let maxPlays = 0;
-            for (const [game, count] of Object.entries(gameStats.gamesPlayed)) {
-                if (count > maxPlays) {
-                    maxPlays = count;
-                    favorite = game;
+            if (gameStats.gamesPlayed) {
+                for (const [game, count] of Object.entries(gameStats.gamesPlayed)) {
+                    if (count > maxPlays) {
+                        maxPlays = count;
+                        favorite = game;
+                    }
                 }
             }
             document.getElementById('favoriteGame').textContent = favorite;
         }
         
-        // Sound system
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
+        // --- Improved Sound System ---
+        let audioContext;
+        function getAudioContext() {
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.error("Web Audio API is not supported.");
+                }
+            }
+            return audioContext;
+        }
+
         function playSound(frequency = 440, duration = 200, type = 'sine') {
             if (!gameStats.settings.sound) return;
+            const localAudioContext = getAudioContext();
+            if (!localAudioContext) return;
             
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
+            const oscillator = localAudioContext.createOscillator();
+            const gainNode = localAudioContext.createGain();
             
             oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+            gainNode.connect(localAudioContext.destination);
             
             oscillator.frequency.value = frequency;
             oscillator.type = type;
             
-            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            gainNode.gain.setValueAtTime(0.1, localAudioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, localAudioContext.currentTime + duration / 1000);
             
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + duration / 1000);
+            oscillator.start(localAudioContext.currentTime);
+            oscillator.stop(localAudioContext.currentTime + duration / 1000);
         }
         
         // Vibration function
         function vibrate(pattern = [100]) {
-            if (!gameStats.settings.vibration) return;
-            if (navigator.vibrate) {
+            if (gameStats.settings.vibration && navigator.vibrate) {
                 navigator.vibrate(pattern);
             }
         }
         
-        // Settings functions
+        // --- Settings functions ---
         function openSettings() {
             playSound(800, 150);
             document.getElementById('settingsModal').style.display = 'flex';
@@ -777,10 +794,15 @@
         }
         
         function toggleSetting(settingName, toggleElement) {
-            gameStats.settings[settingName] = !gameStats.settings[settingName];
-            toggleElement.classList.toggle('active', gameStats.settings[settingName]);
-            playSound(gameStats.settings[settingName] ? 1000 : 500, 100);
-            vibrate([50]);
+            if (gameStats.settings.hasOwnProperty(settingName)) {
+                gameStats.settings[settingName] = !gameStats.settings[settingName];
+                toggleElement.classList.toggle('active', gameStats.settings[settingName]);
+                playSound(gameStats.settings[settingName] ? 1000 : 500, 100);
+                vibrate([50]);
+                if (settingName === 'darkTheme') {
+                    updateSettingsUI();
+                }
+            }
         }
         
         function updateSettingsUI() {
@@ -789,11 +811,10 @@
             document.getElementById('vibrationToggle').classList.toggle('active', gameStats.settings.vibration);
             document.getElementById('themeToggle').classList.toggle('active', gameStats.settings.darkTheme);
             
-            // Apply dark theme
             if (gameStats.settings.darkTheme) {
-                document.body.style.background = 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)';
+                document.body.classList.add('dark-theme');
             } else {
-                document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                document.body.classList.remove('dark-theme');
             }
         }
         
@@ -827,7 +848,6 @@
             
             card.appendChild(ripple);
             
-            // Play sound and vibration
             playSound(660, 150, 'triangle');
             vibrate([30]);
             
@@ -836,96 +856,68 @@
             }, 600);
         }
         
-        // Handle game selection
-        document.querySelectorAll('.game-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                createRipple(e);
-                
-                const gameFile = card.dataset.game;
-                const gameName = card.querySelector('.game-title').textContent;
-                
-                // Update statistics
-                gameStats.sessionCount++;
-                gameStats.gamesPlayed[gameName] = (gameStats.gamesPlayed[gameName] || 0) + 1;
-                gameStats.lastPlayed = gameName;
-                saveGameData();
-                updateStats();
-                
-                // Small delay for ripple effect
-                setTimeout(() => {
-                    window.location.href = gameFile;
-                }, 150);
-            });
+        // --- Refactored Event Handling ---
+        function handleCardClick(event) {
+            const clickEvent = event.touches ? event.touches[0] : event;
+            if (!clickEvent) return;
             
-            // Touch events for mobile
-            card.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                createRipple(e.touches[0]);
-                
-                const gameFile = card.dataset.game;
-                const gameName = card.querySelector('.game-title').textContent;
-                
-                gameStats.sessionCount++;
-                gameStats.gamesPlayed[gameName] = (gameStats.gamesPlayed[gameName] || 0) + 1;
-                gameStats.lastPlayed = gameName;
-                saveGameData();
-                updateStats();
-                
-                setTimeout(() => {
-                    window.location.href = gameFile;
-                }, 150);
-            });
-        });
+            const card = event.currentTarget;
+            createRipple({ currentTarget: card, clientX: clickEvent.clientX, clientY: clickEvent.clientY });
+
+            const gameFile = card.dataset.game;
+            const gameName = card.querySelector('.game-title').textContent;
+
+            gameStats.sessionCount++;
+            gameStats.gamesPlayed[gameName] = (gameStats.gamesPlayed[gameName] || 0) + 1;
+            gameStats.lastPlayed = gameName;
+            saveGameData();
+            updateStats();
+
+            setTimeout(() => {
+                window.location.href = gameFile;
+            }, 150);
+        }
         
-        // Event listeners
-        document.getElementById('settingsBtn').addEventListener('click', openSettings);
-        document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
-        
-        // Settings toggle listeners
-        document.getElementById('soundToggle').addEventListener('click', function() {
-            toggleSetting('sound', this);
-        });
-        
-        document.getElementById('musicToggle').addEventListener('click', function() {
-            toggleSetting('music', this);
-        });
-        
-        document.getElementById('vibrationToggle').addEventListener('click', function() {
-            toggleSetting('vibration', this);
-        });
-        
-        document.getElementById('themeToggle').addEventListener('click', function() {
-            toggleSetting('darkTheme', this);
-            updateSettingsUI();
-        });
-        
-        // Close modal on background click
-        document.getElementById('settingsModal').addEventListener('click', (e) => {
-            if (e.target.id === 'settingsModal') {
-                closeSettings();
-            }
-        });
-        
-        // Prevent context menu on long press
-        document.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-        });
-        
-        // Prevent zoom on double tap
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', (e) => {
-            const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
-        
-        // Add loading animation on page load
-        window.addEventListener('load', () => {
+        function initializePage() {
+            createParticles();
             loadGameData();
+
+            document.querySelectorAll('.game-card, .program-card').forEach(card => {
+                card.addEventListener('click', handleCardClick);
+                card.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    handleCardClick(e);
+                });
+            });
+
+            document.getElementById('settingsBtn').addEventListener('click', openSettings);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
             
-            const cards = document.querySelectorAll('.game-card');
+            document.getElementById('soundToggle').addEventListener('click', function() { toggleSetting('sound', this); });
+            document.getElementById('musicToggle').addEventListener('click', function() { toggleSetting('music', this); });
+            document.getElementById('vibrationToggle').addEventListener('click', function() { toggleSetting('vibration', this); });
+            document.getElementById('themeToggle').addEventListener('click', function() { toggleSetting('darkTheme', this); });
+
+            const settingsModal = document.getElementById('settingsModal');
+            settingsModal.querySelector('.close-btn').addEventListener('click', closeSettings);
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target.id === 'settingsModal') {
+                    closeSettings();
+                }
+            });
+
+            document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', (e) => {
+                const now = (new Date()).getTime();
+                if (now - lastTouchEnd <= 300) {
+                    e.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+
+            const cards = document.querySelectorAll('.game-card, .program-card');
             cards.forEach((card, index) => {
                 card.style.opacity = '0';
                 card.style.transform = 'translateY(50px)';
@@ -934,16 +926,17 @@
                     card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0)';
-                }, index * 100);
+                }, index * 80);
             });
             
-            // Welcome sound
             setTimeout(() => {
                 playSound(523.25, 200); // C5
                 setTimeout(() => playSound(659.25, 200), 100); // E5
                 setTimeout(() => playSound(783.99, 300), 200); // G5
             }, 500);
-        });
+        }
+
+        window.addEventListener('load', initializePage);
     </script>
 </body>
 </html>

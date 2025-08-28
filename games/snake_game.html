@@ -289,8 +289,8 @@
             <div style="font-size: 1.2rem; margin: 5px 0;">🌟 Лучший результат: <span id="bestScore">0</span></div>
             <div style="font-size: 1rem; opacity: 0.8;">🐍 Длина змейки: <span id="snakeLength">1</span></div>
         </div>
-        <button class="close-btn" onclick="resetGame()">🔄 Перезапустить</button>
-        <button class="close-btn" onclick="window.location.href='../index.html'" style="margin-left: 10px;">🏠 На главную</button>
+        <button id="resetBtn" class="close-btn">🔄 Перезапустить</button>
+        <a href="../index.html" class="close-btn" style="margin-left: 10px;">🏠 На главную</a>
     </div>
 
     <!-- Settings Modal -->
@@ -321,12 +321,11 @@
                 <p style="margin: 5px 0;">• Скорость увеличивается каждые 50 очков</p>
             </div>
             
-            <button class="close-settings-btn" onclick="closeSettings()">Закрыть</button>
+            <button id="closeSettingsBtn" class="close-settings-btn">Закрыть</button>
         </div>
     </div>
 
     <script>
-        // Game variables with enhanced features
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
@@ -334,68 +333,65 @@
         const finalScoreElement = document.getElementById('finalScore');
         const bestScoreElement = document.getElementById('bestScore');
         const snakeLengthElement = document.getElementById('snakeLength');
-        const highScoreElement = document.getElementById('highScore');
-        const gameLevelElement = document.getElementById('gameLevel');
-        const gameSpeedElement = document.getElementById('gameSpeed');
 
         // Game state
         let highScore = localStorage.getItem('snakeHighScore') || 0;
         let currentLevel = 1;
-        let gameSpeed = 150;
+        let baseSpeed = 150;
+        let gameSpeed = baseSpeed;
         let speedMultiplier = 1;
         
-        // Initialize display
-        highScoreElement.textContent = highScore;
-        gameLevelElement.textContent = currentLevel;
-        gameSpeedElement.textContent = speedMultiplier + 'x';
+        const gridSize = 20;
+        let tileCount = canvas.width / gridSize;
 
-        // Responsive canvas sizing
+        let snake, food, dx, dy, score, gameRunning;
+
+        let lastUpdateTime = 0;
+        let animationFrameId;
+
+        // --- Improved Sound System ---
+        let audioContext;
+        function getAudioContext() {
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.error("Web Audio API is not supported.");
+                }
+            }
+            return audioContext;
+        }
+
+        function playSound(frequency = 440, duration = 200, type = 'sine') {
+            const localAudioContext = getAudioContext();
+            if (!localAudioContext) return;
+
+            const oscillator = localAudioContext.createOscillator();
+            const gainNode = localAudioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(localAudioContext.destination);
+
+            oscillator.frequency.value = frequency;
+            oscillator.type = type;
+
+            gainNode.gain.setValueAtTime(0.1, localAudioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, localAudioContext.currentTime + duration / 1000);
+
+            oscillator.start(localAudioContext.currentTime);
+            oscillator.stop(localAudioContext.currentTime + duration / 1000);
+        }
+
         function resizeCanvas() {
             const maxWidth = Math.min(400, window.innerWidth * 0.9);
             const maxHeight = Math.min(400, window.innerHeight * 0.6);
-            const size = Math.min(maxWidth, maxHeight);
+            const size = Math.floor(Math.min(maxWidth, maxHeight) / gridSize) * gridSize;
             canvas.width = size;
             canvas.height = size;
+            tileCount = canvas.width / gridSize;
+            drawGame();
         }
         
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
-        
-        // Sound system
-        function playSound(frequency = 440, duration = 200, type = 'sine') {
-            try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                oscillator.frequency.value = frequency;
-                oscillator.type = type;
-                
-                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
-                
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + duration / 1000);
-            } catch (e) {
-                // Audio not supported
-            }
-        }
-
-        const gridSize = 20;
-        const tileCount = canvas.width / gridSize;
-
-        let snake = [
-            {x: 10, y: 10}
-        ];
-        let food = {};
-        let dx = 0;
-        let dy = 0;
-        let score = 0;
-        let gameRunning = true;
-
         function randomFood() {
             food = {
                 x: Math.floor(Math.random() * tileCount),
@@ -404,16 +400,14 @@
         }
 
         function drawGame() {
-            // Clear canvas with gradient
+            if (!ctx) return;
             const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
             gradient.addColorStop(0, '#2c1810');
             gradient.addColorStop(1, '#1a0f08');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw grid pattern
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-            ctx.lineWidth = 1;
             for (let i = 0; i < tileCount; i++) {
                 ctx.beginPath();
                 ctx.moveTo(i * gridSize, 0);
@@ -423,35 +417,23 @@
                 ctx.stroke();
             }
 
-            // Draw snake with gradient
             snake.forEach((segment, index) => {
                 const segmentGradient = ctx.createRadialGradient(
                     segment.x * gridSize + gridSize/2, segment.y * gridSize + gridSize/2, 0,
                     segment.x * gridSize + gridSize/2, segment.y * gridSize + gridSize/2, gridSize/2
                 );
-                
                 if (index === 0) {
-                    // Head
                     segmentGradient.addColorStop(0, '#00ff41');
                     segmentGradient.addColorStop(1, '#00cc33');
                 } else {
-                    // Body
                     const alpha = 1 - (index / snake.length) * 0.3;
                     segmentGradient.addColorStop(0, `rgba(0, 255, 65, ${alpha})`);
                     segmentGradient.addColorStop(1, `rgba(0, 204, 51, ${alpha})`);
                 }
-                
                 ctx.fillStyle = segmentGradient;
-                ctx.fillRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
-                
-                // Add shine effect to head
-                if (index === 0) {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                    ctx.fillRect(segment.x * gridSize + 4, segment.y * gridSize + 4, gridSize/3, gridSize/3);
-                }
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 1, gridSize - 1);
             });
 
-            // Draw food with pulsing effect
             const time = Date.now();
             const pulse = Math.sin(time * 0.01) * 0.1 + 0.9;
             const foodGradient = ctx.createRadialGradient(
@@ -460,47 +442,33 @@
             );
             foodGradient.addColorStop(0, '#ff4444');
             foodGradient.addColorStop(1, '#cc2222');
-            
             ctx.fillStyle = foodGradient;
-            ctx.fillRect(food.x * gridSize + 2, food.y * gridSize + 2, (gridSize - 4) * pulse, (gridSize - 4) * pulse);
+            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize * pulse, gridSize * pulse);
         }
 
-        function moveSnake() {
-            if (!gameRunning) return;
-
+        function updateGame() {
             const head = {x: snake[0].x + dx, y: snake[0].y + dy};
 
-            // Check wall collision
-            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
-                gameOver();
-                return;
-            }
-
-            // Check self collision
-            if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount || snake.some(s => s.x === head.x && s.y === head.y)) {
                 gameOver();
                 return;
             }
 
             snake.unshift(head);
 
-            // Check food collision
             if (head.x === food.x && head.y === food.y) {
                 score += 10;
                 scoreElement.textContent = score;
                 
-                // Level up every 50 points
                 const newLevel = Math.floor(score / 50) + 1;
                 if (newLevel > currentLevel) {
                     currentLevel = newLevel;
-                    gameSpeed = Math.max(50, 150 - (currentLevel - 1) * 10);
-                    speedMultiplier = Math.round((150 / gameSpeed) * 10) / 10;
-                    gameLevelElement.textContent = currentLevel;
-                    gameSpeedElement.textContent = speedMultiplier + 'x';
-                    playSound(880, 300, 'triangle'); // Level up sound
+                    gameSpeed = Math.max(50, baseSpeed - (currentLevel - 1) * 10);
+                    speedMultiplier = Math.round((baseSpeed / gameSpeed) * 10) / 10;
+                    playSound(880, 300, 'triangle');
                 }
                 
-                playSound(660, 150, 'square'); // Food sound
+                playSound(660, 150, 'square');
                 randomFood();
             } else {
                 snake.pop();
@@ -509,15 +477,14 @@
 
         function gameOver() {
             gameRunning = false;
-            
-            // Update high score
+            cancelAnimationFrame(animationFrameId);
+
             if (score > highScore) {
                 highScore = score;
                 localStorage.setItem('snakeHighScore', highScore);
-                highScoreElement.textContent = highScore;
-                playSound(1047, 500, 'triangle'); // New high score sound
+                playSound(1047, 500, 'triangle');
             } else {
-                playSound(220, 500, 'sawtooth'); // Game over sound
+                playSound(220, 500, 'sawtooth');
             }
             
             finalScoreElement.textContent = score;
@@ -532,143 +499,46 @@
             dy = 0;
             score = 0;
             currentLevel = 1;
-            gameSpeed = 150;
+            gameSpeed = baseSpeed;
             speedMultiplier = 1;
             
             scoreElement.textContent = score;
-            gameLevelElement.textContent = currentLevel;
-            gameSpeedElement.textContent = speedMultiplier + 'x';
             
             gameRunning = true;
             gameOverElement.style.display = 'none';
             randomFood();
             
-            playSound(523, 200); // Reset sound
+            playSound(523, 200);
+
+            lastUpdateTime = 0;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(gameLoop);
         }
 
-        function gameLoop() {
-            moveSnake();
-            drawGame();
-        }
-
-        document.addEventListener('keydown', (e) => {
-            if (!gameRunning && e.code === 'Space') {
-                resetGame();
-                return;
-            }
-
+        function gameLoop(timestamp) {
             if (!gameRunning) return;
 
-            switch(e.code) {
-                case 'ArrowUp':
-                    if (dy !== 1) {
-                        dx = 0;
-                        dy = -1;
-                    }
-                    break;
-                case 'ArrowDown':
-                    if (dy !== -1) {
-                        dx = 0;
-                        dy = 1;
-                    }
-                    break;
-                case 'ArrowLeft':
-                    if (dx !== 1) {
-                        dx = -1;
-                        dy = 0;
-                    }
-                    break;
-                case 'ArrowRight':
-                    if (dx !== -1) {
-                        dx = 1;
-                        dy = 0;
-                    }
-                    break;
-            }
-        });
-        
-        // Touch controls
-        document.querySelectorAll('.touch-btn').forEach(btn => {
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                const direction = e.target.dataset.direction;
-                handleDirection(direction);
-            });
+            animationFrameId = requestAnimationFrame(gameLoop);
             
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                const direction = e.target.dataset.direction;
-                handleDirection(direction);
-            });
-        });
-        
-        // Game over screen touch/click
-        gameOverElement.addEventListener('click', () => {
-            if (!gameRunning) {
-                resetGame();
+            if (timestamp - lastUpdateTime > gameSpeed) {
+                lastUpdateTime = timestamp;
+                updateGame();
+                drawGame();
             }
-        });
-        
-        gameOverElement.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (!gameRunning) {
-                resetGame();
-            }
-        });
-        
+        }
+
         function handleDirection(direction) {
             if (!gameRunning) return;
-            
             switch(direction) {
-                case 'up':
-                    if (dy !== 1) {
-                        dx = 0;
-                        dy = -1;
-                    }
-                    break;
-                case 'down':
-                    if (dy !== -1) {
-                        dx = 0;
-                        dy = 1;
-                    }
-                    break;
-                case 'left':
-                    if (dx !== 1) {
-                        dx = -1;
-                        dy = 0;
-                    }
-                    break;
-                case 'right':
-                    if (dx !== -1) {
-                        dx = 1;
-                        dy = 0;
-                    }
-                    break;
+                case 'up': if (dy !== 1) { dx = 0; dy = -1; } break;
+                case 'down': if (dy !== -1) { dx = 0; dy = 1; } break;
+                case 'left': if (dx !== 1) { dx = -1; dy = 0; } break;
+                case 'right': if (dx !== -1) { dx = 1; dy = 0; } break;
             }
         }
 
-        // Initialize game with updated interval
-        randomFood();
-        
-        function gameLoop() {
-            moveSnake();
-            drawGame();
-        }
-        
-        function startGameLoop() {
-            if (gameRunning) {
-                gameLoop();
-                setTimeout(startGameLoop, gameSpeed);
-            }
-        }
-        
-        startGameLoop();
-        drawGame();
-        
-        // Settings modal functions
         function openSettings() {
             document.getElementById('settingsModal').style.display = 'flex';
-            // Update modal values
             document.getElementById('modalHighScore').textContent = highScore;
             document.getElementById('modalGameLevel').textContent = currentLevel;
             document.getElementById('modalGameSpeed').textContent = speedMultiplier + 'x';
@@ -678,15 +548,40 @@
             document.getElementById('settingsModal').style.display = 'none';
         }
         
-        // Settings button event listener
-        document.getElementById('settingsBtn').addEventListener('click', openSettings);
-        
-        // Close modal on background click
-        document.getElementById('settingsModal').addEventListener('click', (e) => {
-            if (e.target.id === 'settingsModal') {
-                closeSettings();
-            }
-        });
+        function initializeApp() {
+            resizeCanvas();
+            resetGame();
+
+            window.addEventListener('resize', resizeCanvas);
+
+            document.addEventListener('keydown', (e) => {
+                if (!gameRunning && e.code === 'Space') {
+                    resetGame();
+                    return;
+                }
+                handleDirection({ 'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right' }[e.code]);
+            });
+
+            document.querySelectorAll('.touch-btn').forEach(btn => {
+                const handleTouch = (e) => {
+                    e.preventDefault();
+                    handleDirection(e.currentTarget.dataset.direction);
+                };
+                btn.addEventListener('touchstart', handleTouch);
+                btn.addEventListener('click', handleTouch);
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', resetGame);
+            gameOverElement.addEventListener('click', () => { if (!gameRunning) resetGame(); });
+
+            document.getElementById('settingsBtn').addEventListener('click', openSettings);
+            document.getElementById('closeSettingsBtn').addEventListener('click', closeSettings);
+            document.getElementById('settingsModal').addEventListener('click', (e) => {
+                if (e.target.id === 'settingsModal') closeSettings();
+            });
+        }
+
+        initializeApp();
     </script>
 </body>
 </html>
