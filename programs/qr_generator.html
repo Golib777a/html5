@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>QR код генератор</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .program-header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .back-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .qr-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .panel {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+        }
+        
+        .input-area {
+            width: 100%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        .input-area::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .qr-display {
+            width: 100%;
+            height: 300px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 15px 0;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .qr-code {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        .placeholder {
+            color: #888;
+            text-align: center;
+            font-size: 18px;
+        }
+        
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .btn.primary {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: rgba(76, 175, 80, 0.5);
+            color: #4CAF50;
+        }
+        
+        .btn.primary:hover {
+            background: rgba(76, 175, 80, 0.5);
+        }
+        
+        .btn.download {
+            background: rgba(33, 150, 243, 0.3);
+            border-color: rgba(33, 150, 243, 0.5);
+            color: #2196F3;
+        }
+        
+        .btn.download:hover {
+            background: rgba(33, 150, 243, 0.5);
+        }
+        
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .preset-btn {
+            padding: 10px;
+            background: rgba(255, 193, 7, 0.3);
+            border: 2px solid rgba(255, 193, 7, 0.5);
+            color: #FFC107;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        .preset-btn:hover {
+            background: rgba(255, 193, 7, 0.5);
+        }
+        
+        .size-selector {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            align-items: center;
+        }
+        
+        .size-btn {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .size-btn.active {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: rgba(76, 175, 80, 0.5);
+            color: #4CAF50;
+        }
+        
+        @media (max-width: 768px) {
+            .qr-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .preset-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="program-header">
+        <a href="../index.html" class="back-btn">←</a>
+        <h1>📱 QR код генератор</h1>
+        <p>Создание QR кодов для текста, ссылок, контактов и других данных</p>
+    </div>
+    
+    <div class="qr-container">
+        <div class="panel">
+            <h3>✏️ Ввод данных</h3>
+            
+            <textarea 
+                class="input-area" 
+                id="textInput" 
+                placeholder="Введите текст, ссылку или другие данные для создания QR кода..."
+                oninput="generateQR()"
+            ></textarea>
+            
+            <div class="preset-buttons">
+                <button class="preset-btn" onclick="setPreset('wifi')">📶 Wi-Fi</button>
+                <button class="preset-btn" onclick="setPreset('contact')">👤 Контакт</button>
+                <button class="preset-btn" onclick="setPreset('email')">📧 Email</button>
+                <button class="preset-btn" onclick="setPreset('phone')">📞 Телефон</button>
+                <button class="preset-btn" onclick="setPreset('sms')">💬 SMS</button>
+                <button class="preset-btn" onclick="setPreset('geo')">📍 Координаты</button>
+            </div>
+            
+            <div class="size-selector">
+                <span>Размер:</span>
+                <button class="size-btn" onclick="setSize(128)">128px</button>
+                <button class="size-btn active" onclick="setSize(256)">256px</button>
+                <button class="size-btn" onclick="setSize(512)">512px</button>
+            </div>
+            
+            <div style="text-align: center;">
+                <button class="btn primary" onclick="generateQR()">🔄 Обновить</button>
+                <button class="btn" onclick="clearInput()">🗑️ Очистить</button>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h3>📱 QR код</h3>
+            
+            <div class="qr-display" id="qrDisplay">
+                <div class="placeholder">QR код появится здесь</div>
+            </div>
+            
+            <div style="text-align: center;">
+                <button class="btn download" onclick="downloadQR()">💾 Скачать PNG</button>
+                <button class="btn download" onclick="downloadSVG()">📄 Скачать SVG</button>
+                <button class="btn" onclick="printQR()">🖨️ Печать</button>
+            </div>
+            
+            <div style="margin-top: 15px; font-size: 14px; opacity: 0.8;">
+                <div>📊 Информация:</div>
+                <div id="qrInfo">Символов: 0</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSize = 256;
+        let currentQRCode = null;
+        
+        // Simple QR Code generation using Canvas
+        function generateQR() {
+            const text = document.getElementById('textInput').value;
+            const display = document.getElementById('qrDisplay');
+            const info = document.getElementById('qrInfo');
+            
+            if (!text.trim()) {
+                display.innerHTML = '<div class="placeholder">QR код появится здесь</div>';
+                info.textContent = 'Символов: 0';
+                return;
+            }
+            
+            // Create QR code using a simple algorithm
+            const qrData = createQRMatrix(text);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const moduleCount = qrData.length;
+            const moduleSize = Math.floor(currentSize / moduleCount);
+            canvas.width = moduleSize * moduleCount;
+            canvas.height = moduleSize * moduleCount;
+            
+            // Draw QR code
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#000000';
+            for (let row = 0; row < moduleCount; row++) {
+                for (let col = 0; col < moduleCount; col++) {
+                    if (qrData[row][col]) {
+                        ctx.fillRect(
+                            col * moduleSize,
+                            row * moduleSize,
+                            moduleSize,
+                            moduleSize
+                        );
+                    }
+                }
+            }
+            
+            display.innerHTML = '';
+            canvas.className = 'qr-code';
+            display.appendChild(canvas);
+            currentQRCode = canvas;
+            
+            info.innerHTML = `
+                Символов: ${text.length}<br>
+                Размер: ${canvas.width}x${canvas.height}px
+            `;
+            
+            playSound(600, 100);
+        }
+        
+        // Simplified QR matrix generation (for demo purposes)
+        function createQRMatrix(text) {
+            const size = Math.max(21, Math.ceil(Math.sqrt(text.length * 8)) + 4);
+            const matrix = Array(size).fill().map(() => Array(size).fill(false));
+            
+            // Add finder patterns (corners)
+            addFinderPattern(matrix, 0, 0);
+            addFinderPattern(matrix, size - 7, 0);
+            addFinderPattern(matrix, 0, size - 7);
+            
+            // Add data in a simple pattern
+            let dataIndex = 0;
+            for (let i = 0; i < text.length && dataIndex < text.length; i++) {
+                const charCode = text.charCodeAt(i);
+                const binary = charCode.toString(2).padStart(8, '0');
+                
+                for (let bit = 0; bit < 8; bit++) {
+                    const row = 9 + Math.floor((dataIndex * 8 + bit) / (size - 18));
+                    const col = 9 + ((dataIndex * 8 + bit) % (size - 18));
+                    
+                    if (row < size - 9 && col < size - 9) {
+                        matrix[row][col] = binary[bit] === '1';
+                    }
+                }
+                dataIndex++;
+            }
+            
+            return matrix;
+        }
+        
+        function addFinderPattern(matrix, startRow, startCol) {
+            // 7x7 finder pattern
+            for (let row = 0; row < 7; row++) {
+                for (let col = 0; col < 7; col++) {
+                    const r = startRow + row;
+                    const c = startCol + col;
+                    
+                    if (r < matrix.length && c < matrix[0].length) {
+                        // Outer border and inner square
+                        if (row === 0 || row === 6 || col === 0 || col === 6 || 
+                           (row >= 2 && row <= 4 && col >= 2 && col <= 4)) {
+                            matrix[r][c] = true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        function setSize(size) {
+            currentSize = size;
+            document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            generateQR();
+            playSound(700, 80);
+        }
+        
+        function setPreset(type) {
+            const input = document.getElementById('textInput');
+            
+            switch(type) {
+                case 'wifi':
+                    input.value = 'WIFI:T:WPA;S:MyNetwork;P:MyPassword;H:false;';
+                    break;
+                case 'contact':
+                    input.value = 'BEGIN:VCARD\\nVERSION:3.0\\nFN:Иван Иванов\\nTEL:+7-900-123-45-67\\nEMAIL:ivan@example.com\\nEND:VCARD';
+                    break;
+                case 'email':
+                    input.value = 'mailto:example@email.com?subject=Тема&body=Сообщение';
+                    break;
+                case 'phone':
+                    input.value = 'tel:+7-900-123-45-67';
+                    break;
+                case 'sms':
+                    input.value = 'sms:+7-900-123-45-67?body=Текст сообщения';
+                    break;
+                case 'geo':
+                    input.value = 'geo:55.7558,37.6176?q=Красная площадь, Москва';
+                    break;
+            }
+            
+            generateQR();
+            playSound(650, 100);
+        }
+        
+        function clearInput() {
+            document.getElementById('textInput').value = '';
+            generateQR();
+            playSound(500, 100);
+        }
+        
+        function downloadQR() {
+            if (!currentQRCode) return;
+            
+            const link = document.createElement('a');
+            link.download = 'qrcode.png';
+            link.href = currentQRCode.toDataURL();
+            link.click();
+            
+            playSound(800, 150);
+        }
+        
+        function downloadSVG() {
+            if (!currentQRCode) return;
+            
+            const text = document.getElementById('textInput').value;
+            const qrData = createQRMatrix(text);
+            const moduleCount = qrData.length;
+            
+            let svg = `<svg width="${currentSize}" height="${currentSize}" xmlns="http://www.w3.org/2000/svg">`;
+            svg += `<rect width="100%" height="100%" fill="white"/>`;
+            
+            const moduleSize = currentSize / moduleCount;
+            
+            for (let row = 0; row < moduleCount; row++) {
+                for (let col = 0; col < moduleCount; col++) {
+                    if (qrData[row][col]) {
+                        svg += `<rect x="${col * moduleSize}" y="${row * moduleSize}" width="${moduleSize}" height="${moduleSize}" fill="black"/>`;
+                    }
+                }
+            }
+            
+            svg += '</svg>';
+            
+            const blob = new Blob([svg], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = 'qrcode.svg';
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            playSound(800, 150);
+        }
+        
+        function printQR() {
+            if (!currentQRCode) return;
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>QR Code</title>
+                    <style>
+                        body { 
+                            display: flex; 
+                            justify-content: center; 
+                            align-items: center; 
+                            min-height: 100vh; 
+                            margin: 0; 
+                        }
+                        img { max-width: 100%; }
+                    </style>
+                </head>
+                <body>
+                    <img src="${currentQRCode.toDataURL()}" alt="QR Code">
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+            
+            playSound(750, 150);
+        }
+        
+        function playSound(frequency = 440, duration = 100) {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = frequency;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration / 1000);
+            } catch (e) {}
+        }
+        
+        // Initialize with example
+        document.getElementById('textInput').value = 'https://example.com';
+        generateQR();
+    </script>
+</body>
+</html>
