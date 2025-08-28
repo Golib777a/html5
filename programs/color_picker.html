@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Палитра цветов</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .program-header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .back-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .color-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .color-panel {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+        }
+        
+        .color-picker {
+            width: 100%;
+            height: 200px;
+            border-radius: 10px;
+            cursor: crosshair;
+            position: relative;
+            background: linear-gradient(to right, white, red);
+        }
+        
+        .color-display {
+            width: 100%;
+            height: 100px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .color-input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+        }
+        
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+            gap: 5px;
+            margin-top: 15px;
+        }
+        
+        .palette-color {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: transform 0.3s ease;
+        }
+        
+        .palette-color:hover {
+            transform: scale(1.1);
+        }
+        
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        
+        @media (max-width: 768px) {
+            .color-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="program-header">
+        <a href="../index.html" class="back-btn">←</a>
+        <h1>🎨 Палитра цветов</h1>
+        <p>Инструмент для работы с цветами, создания палитр и подбора цветовых схем</p>
+    </div>
+    
+    <div class="color-container">
+        <div class="color-panel">
+            <h3>🎯 Выбор цвета</h3>
+            <canvas class="color-picker" id="colorPicker"></canvas>
+            <div class="color-display" id="colorDisplay" style="background: #ff0000;"></div>
+            
+            <input type="text" class="color-input" id="hexInput" placeholder="HEX: #ff0000">
+            <input type="text" class="color-input" id="rgbInput" placeholder="RGB: 255, 0, 0">
+            <input type="text" class="color-input" id="hslInput" placeholder="HSL: 0, 100%, 50%">
+            
+            <button class="btn" onclick="randomColor()">🎲 Случайный цвет</button>
+            <button class="btn" onclick="copyColor()">📋 Копировать HEX</button>
+        </div>
+        
+        <div class="color-panel">
+            <h3>🎨 Палитра</h3>
+            <div class="palette-grid" id="paletteGrid"></div>
+            
+            <button class="btn" onclick="addToPalette()">➕ Добавить цвет</button>
+            <button class="btn" onclick="generatePalette()">🌈 Генерировать палитру</button>
+            <button class="btn" onclick="clearPalette()">🗑️ Очистить</button>
+            <button class="btn" onclick="savePalette()">💾 Сохранить палитру</button>
+        </div>
+    </div>
+
+    <script>
+        let currentColor = { r: 255, g: 0, b: 0 };
+        let palette = JSON.parse(localStorage.getItem('colorPalette') || '[]');
+        
+        const canvas = document.getElementById('colorPicker');
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+        
+        function drawColorPicker() {
+            const gradient1 = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            gradient1.addColorStop(0, 'white');
+            gradient1.addColorStop(1, 'red');
+            ctx.fillStyle = gradient1;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const gradient2 = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient2.addColorStop(0, 'rgba(0,0,0,0)');
+            gradient2.addColorStop(1, 'black');
+            ctx.fillStyle = gradient2;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const imageData = ctx.getImageData(x, y, 1, 1);
+            const [r, g, b] = imageData.data;
+            
+            setColor(r, g, b);
+            playSound(600, 100);
+        });
+        
+        function setColor(r, g, b) {
+            currentColor = { r, g, b };
+            updateColorDisplay();
+        }
+        
+        function updateColorDisplay() {
+            const { r, g, b } = currentColor;
+            const hex = rgbToHex(r, g, b);
+            const hsl = rgbToHsl(r, g, b);
+            
+            document.getElementById('colorDisplay').style.background = `rgb(${r}, ${g}, ${b})`;
+            document.getElementById('hexInput').value = hex;
+            document.getElementById('rgbInput').value = `${r}, ${g}, ${b}`;
+            document.getElementById('hslInput').value = `${hsl.h}, ${hsl.s}%, ${hsl.l}%`;
+        }
+        
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+        }
+        
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            
+            return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+        }
+        
+        function randomColor() {
+            const r = Math.floor(Math.random() * 256);
+            const g = Math.floor(Math.random() * 256);
+            const b = Math.floor(Math.random() * 256);
+            setColor(r, g, b);
+            playSound(700, 120);
+        }
+        
+        function addToPalette() {
+            const hex = rgbToHex(currentColor.r, currentColor.g, currentColor.b);
+            if (!palette.includes(hex)) {
+                palette.push(hex);
+                updatePaletteDisplay();
+                savePaletteToStorage();
+                playSound(800, 100);
+            }
+        }
+        
+        function generatePalette() {
+            palette = [];
+            for (let i = 0; i < 12; i++) {
+                const hue = (i * 30) % 360;
+                const color = hslToRgb(hue, 70, 50);
+                palette.push(rgbToHex(color.r, color.g, color.b));
+            }
+            updatePaletteDisplay();
+            savePaletteToStorage();
+            playSound(900, 150);
+        }
+        
+        function hslToRgb(h, s, l) {
+            h /= 360; s /= 100; l /= 100;
+            const c = (1 - Math.abs(2 * l - 1)) * s;
+            const x = c * (1 - Math.abs((h * 6) % 2 - 1));
+            const m = l - c / 2;
+            let r, g, b;
+            
+            if (h < 1/6) { r = c; g = x; b = 0; }
+            else if (h < 2/6) { r = x; g = c; b = 0; }
+            else if (h < 3/6) { r = 0; g = c; b = x; }
+            else if (h < 4/6) { r = 0; g = x; b = c; }
+            else if (h < 5/6) { r = x; g = 0; b = c; }
+            else { r = c; g = 0; b = x; }
+            
+            return {
+                r: Math.round((r + m) * 255),
+                g: Math.round((g + m) * 255),
+                b: Math.round((b + m) * 255)
+            };
+        }
+        
+        function updatePaletteDisplay() {
+            const grid = document.getElementById('paletteGrid');
+            grid.innerHTML = '';
+            
+            palette.forEach(color => {
+                const div = document.createElement('div');
+                div.className = 'palette-color';
+                div.style.backgroundColor = color;
+                div.onclick = () => {
+                    const rgb = hexToRgb(color);
+                    setColor(rgb.r, rgb.g, rgb.b);
+                    playSound(650, 80);
+                };
+                grid.appendChild(div);
+            });
+        }
+        
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\\d]{2})([a-f\\d]{2})([a-f\\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+        
+        function clearPalette() {
+            palette = [];
+            updatePaletteDisplay();
+            savePaletteToStorage();
+            playSound(500, 150);
+        }
+        
+        function savePaletteToStorage() {
+            localStorage.setItem('colorPalette', JSON.stringify(palette));
+        }
+        
+        function savePalette() {
+            const data = palette.join('\\n');
+            const blob = new Blob([data], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'color_palette.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+            playSound(850, 200);
+        }
+        
+        function copyColor() {
+            const hex = document.getElementById('hexInput').value;
+            navigator.clipboard.writeText(hex).then(() => {
+                playSound(750, 100);
+            });
+        }
+        
+        function playSound(frequency = 440, duration = 100) {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = frequency;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration / 1000);
+            } catch (e) {}
+        }
+        
+        // Initialize
+        drawColorPicker();
+        updateColorDisplay();
+        updatePaletteDisplay();
+    </script>
+</body>
+</html>
