@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список дел (To-Do List)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            transition: background 0.3s ease;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #task-form {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        #task-input {
+            flex-grow: 1;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px 0 0 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            outline: none;
+        }
+
+        #task-form button {
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 0 8px 8px 0;
+            background: #4a90e2;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        #task-form button:hover {
+            background: #357abd;
+        }
+
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active, .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        #task-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: background 0.3s ease;
+        }
+
+        .task-item.completed {
+            background: rgba(0, 255, 100, 0.1);
+        }
+
+        .task-item.completed span {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+
+        .task-item input[type="checkbox"] {
+            margin-right: 15px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .task-item span {
+            flex-grow: 1;
+        }
+
+        .task-item .delete-btn {
+            background: transparent;
+            border: none;
+            color: #ff5c5c;
+            font-size: 20px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+
+        .task-item:hover .delete-btn {
+            opacity: 1;
+        }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        #clear-completed-btn {
+            background: transparent;
+            border: none;
+            color: #ff5c5c;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        #clear-completed-btn:hover {
+            color: #ff2d2d;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <a href="../index.html" class="back-btn" title="Вернуться">←</a>
+            <h1>Список дел</h1>
+        </div>
+
+        <form id="task-form">
+            <input type="text" id="task-input" placeholder="Что нужно сделать?" autocomplete="off" required>
+            <button type="submit">Добавить</button>
+        </form>
+
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">Все</button>
+            <button class="filter-btn" data-filter="active">Активные</button>
+            <button class="filter-btn" data-filter="completed">Выполненные</button>
+        </div>
+
+        <ul id="task-list"></ul>
+
+        <div class="footer">
+            <span id="task-counter">0 задач осталось</span>
+            <button id="clear-completed-btn">Очистить выполненные</button>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const taskForm = document.getElementById('task-form');
+            const taskInput = document.getElementById('task-input');
+            const taskList = document.getElementById('task-list');
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            const taskCounter = document.getElementById('task-counter');
+            const clearCompletedBtn = document.getElementById('clear-completed-btn');
+
+            let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+            let currentFilter = 'all';
+
+            function saveTasks() {
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+            }
+
+            function renderTasks() {
+                taskList.innerHTML = '';
+                const filteredTasks = tasks.filter(task => {
+                    if (currentFilter === 'all') return true;
+                    if (currentFilter === 'active') return !task.completed;
+                    if (currentFilter === 'completed') return task.completed;
+                });
+
+                filteredTasks.forEach(task => {
+                    const taskItem = document.createElement('li');
+                    taskItem.className = 'task-item';
+                    if (task.completed) {
+                        taskItem.classList.add('completed');
+                    }
+                    taskItem.dataset.id = task.id;
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = task.completed;
+                    checkbox.addEventListener('change', () => toggleTask(task.id));
+
+                    const taskText = document.createElement('span');
+                    taskText.textContent = task.text;
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-btn';
+                    deleteBtn.innerHTML = '&times;';
+                    deleteBtn.addEventListener('click', () => deleteTask(task.id));
+
+                    taskItem.appendChild(checkbox);
+                    taskItem.appendChild(taskText);
+                    taskItem.appendChild(deleteBtn);
+                    taskList.appendChild(taskItem);
+                });
+                updateTaskCounter();
+            }
+
+            function updateTaskCounter() {
+                const activeTasks = tasks.filter(task => !task.completed).length;
+                taskCounter.textContent = `${activeTasks} задач осталось`;
+            }
+
+            function addTask(e) {
+                e.preventDefault();
+                const text = taskInput.value.trim();
+                if (text === '') return;
+
+                const newTask = {
+                    id: Date.now(),
+                    text: text,
+                    completed: false
+                };
+                tasks.push(newTask);
+                taskInput.value = '';
+
+                saveTasks();
+                renderTasks();
+            }
+
+            function toggleTask(id) {
+                tasks = tasks.map(task =>
+                    task.id === id ? { ...task, completed: !task.completed } : task
+                );
+                saveTasks();
+                renderTasks();
+            }
+
+            function deleteTask(id) {
+                tasks = tasks.filter(task => task.id !== id);
+                saveTasks();
+                renderTasks();
+            }
+
+            function clearCompleted() {
+                tasks = tasks.filter(task => !task.completed);
+                saveTasks();
+                renderTasks();
+            }
+
+            function setFilter(e) {
+                filterBtns.forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                currentFilter = e.target.dataset.filter;
+                renderTasks();
+            }
+
+            taskForm.addEventListener('submit', addTask);
+            clearCompletedBtn.addEventListener('click', clearCompleted);
+            filterBtns.forEach(btn => btn.addEventListener('click', setFilter));
+
+            renderTasks();
+        });
+    </script>
+</body>
+</html>
