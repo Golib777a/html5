@@ -326,234 +326,191 @@
     </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
-        const gameOverElement = document.getElementById('gameOver');
-        const finalScoreElement = document.getElementById('finalScore');
-        const bestScoreElement = document.getElementById('bestScore');
-        const snakeLengthElement = document.getElementById('snakeLength');
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const scoreElement = document.getElementById('score');
+            const gameOverElement = document.getElementById('gameOver');
+            const finalScoreElement = document.getElementById('finalScore');
+            const bestScoreElement = document.getElementById('bestScore');
+            const snakeLengthElement = document.getElementById('snakeLength');
 
-        // Game state
-        let highScore = localStorage.getItem('snakeHighScore') || 0;
-        let currentLevel = 1;
-        let baseSpeed = 150;
-        let gameSpeed = baseSpeed;
-        let speedMultiplier = 1;
-        
-        const gridSize = 20;
-        let tileCount = canvas.width / gridSize;
+            let highScore = localStorage.getItem('snakeHighScore') || 0;
+            let currentLevel = 1;
+            let gameSpeed = 150;
+            let speedMultiplier = 1;
 
-        let snake, food, dx, dy, score, gameRunning;
+            const gridSize = 20;
+            let tileCount = canvas.width / gridSize;
 
-        let lastUpdateTime = 0;
-        let animationFrameId;
+            let snake, food, dx, dy, score, gameRunning, gameLoopTimeout;
 
-        // --- Improved Sound System ---
-        let audioContext;
-        function getAudioContext() {
-            if (!audioContext) {
-                try {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                } catch (e) {
-                    console.error("Web Audio API is not supported.");
+            let audioContext;
+            function getAudioContext() {
+                if (!audioContext) {
+                    try {
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    } catch (e) {
+                        console.error("Web Audio API is not supported.");
+                    }
                 }
-            }
-            return audioContext;
-        }
-
-        function playSound(frequency = 440, duration = 200, type = 'sine') {
-            const localAudioContext = getAudioContext();
-            if (!localAudioContext) return;
-
-            const oscillator = localAudioContext.createOscillator();
-            const gainNode = localAudioContext.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(localAudioContext.destination);
-
-            oscillator.frequency.value = frequency;
-            oscillator.type = type;
-
-            gainNode.gain.setValueAtTime(0.1, localAudioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, localAudioContext.currentTime + duration / 1000);
-
-            oscillator.start(localAudioContext.currentTime);
-            oscillator.stop(localAudioContext.currentTime + duration / 1000);
-        }
-
-        function resizeCanvas() {
-            const maxWidth = Math.min(400, window.innerWidth * 0.9);
-            const maxHeight = Math.min(400, window.innerHeight * 0.6);
-            const size = Math.floor(Math.min(maxWidth, maxHeight) / gridSize) * gridSize;
-            canvas.width = size;
-            canvas.height = size;
-            tileCount = canvas.width / gridSize;
-            drawGame();
-        }
-        
-        function randomFood() {
-            food = {
-                x: Math.floor(Math.random() * tileCount),
-                y: Math.floor(Math.random() * tileCount)
-            };
-        }
-
-        function drawGame() {
-            if (!ctx) return;
-            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-            gradient.addColorStop(0, '#2c1810');
-            gradient.addColorStop(1, '#1a0f08');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-            for (let i = 0; i < tileCount; i++) {
-                ctx.beginPath();
-                ctx.moveTo(i * gridSize, 0);
-                ctx.lineTo(i * gridSize, canvas.height);
-                ctx.moveTo(0, i * gridSize);
-                ctx.lineTo(canvas.width, i * gridSize);
-                ctx.stroke();
+                return audioContext;
             }
 
-            snake.forEach((segment, index) => {
-                const segmentGradient = ctx.createRadialGradient(
-                    segment.x * gridSize + gridSize/2, segment.y * gridSize + gridSize/2, 0,
-                    segment.x * gridSize + gridSize/2, segment.y * gridSize + gridSize/2, gridSize/2
-                );
-                if (index === 0) {
-                    segmentGradient.addColorStop(0, '#00ff41');
-                    segmentGradient.addColorStop(1, '#00cc33');
-                } else {
-                    const alpha = 1 - (index / snake.length) * 0.3;
-                    segmentGradient.addColorStop(0, `rgba(0, 255, 65, ${alpha})`);
-                    segmentGradient.addColorStop(1, `rgba(0, 204, 51, ${alpha})`);
-                }
-                ctx.fillStyle = segmentGradient;
-                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 1, gridSize - 1);
-            });
-
-            const time = Date.now();
-            const pulse = Math.sin(time * 0.01) * 0.1 + 0.9;
-            const foodGradient = ctx.createRadialGradient(
-                food.x * gridSize + gridSize/2, food.y * gridSize + gridSize/2, 0,
-                food.x * gridSize + gridSize/2, food.y * gridSize + gridSize/2, gridSize/2 * pulse
-            );
-            foodGradient.addColorStop(0, '#ff4444');
-            foodGradient.addColorStop(1, '#cc2222');
-            ctx.fillStyle = foodGradient;
-            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize * pulse, gridSize * pulse);
-        }
-
-        function updateGame() {
-            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
-
-            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount || snake.some(s => s.x === head.x && s.y === head.y)) {
-                gameOver();
-                return;
+            function playSound(frequency = 440, duration = 200, type = 'sine') {
+                const localAudioContext = getAudioContext();
+                if (!localAudioContext) return;
+                const oscillator = localAudioContext.createOscillator();
+                const gainNode = localAudioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(localAudioContext.destination);
+                oscillator.frequency.value = frequency;
+                oscillator.type = type;
+                gainNode.gain.setValueAtTime(0.1, localAudioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, localAudioContext.currentTime + duration / 1000);
+                oscillator.start(localAudioContext.currentTime);
+                oscillator.stop(localAudioContext.currentTime + duration / 1000);
             }
 
-            snake.unshift(head);
-
-            if (head.x === food.x && head.y === food.y) {
-                score += 10;
-                scoreElement.textContent = score;
-                
-                const newLevel = Math.floor(score / 50) + 1;
-                if (newLevel > currentLevel) {
-                    currentLevel = newLevel;
-                    gameSpeed = Math.max(50, baseSpeed - (currentLevel - 1) * 10);
-                    speedMultiplier = Math.round((baseSpeed / gameSpeed) * 10) / 10;
-                    playSound(880, 300, 'triangle');
-                }
-                
-                playSound(660, 150, 'square');
-                randomFood();
-            } else {
-                snake.pop();
-            }
-        }
-
-        function gameOver() {
-            gameRunning = false;
-            cancelAnimationFrame(animationFrameId);
-
-            if (score > highScore) {
-                highScore = score;
-                localStorage.setItem('snakeHighScore', highScore);
-                playSound(1047, 500, 'triangle');
-            } else {
-                playSound(220, 500, 'sawtooth');
-            }
-            
-            finalScoreElement.textContent = score;
-            bestScoreElement.textContent = highScore;
-            snakeLengthElement.textContent = snake.length;
-            gameOverElement.style.display = 'block';
-        }
-
-        function resetGame() {
-            snake = [{x: 10, y: 10}];
-            dx = 0;
-            dy = 0;
-            score = 0;
-            currentLevel = 1;
-            gameSpeed = baseSpeed;
-            speedMultiplier = 1;
-            
-            scoreElement.textContent = score;
-            
-            gameRunning = true;
-            gameOverElement.style.display = 'none';
-            randomFood();
-            
-            playSound(523, 200);
-
-            lastUpdateTime = 0;
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
-
-        function gameLoop(timestamp) {
-            if (!gameRunning) return;
-
-            animationFrameId = requestAnimationFrame(gameLoop);
-            
-            if (timestamp - lastUpdateTime > gameSpeed) {
-                lastUpdateTime = timestamp;
-                updateGame();
+            function resizeCanvas() {
+                const maxWidth = Math.min(400, window.innerWidth * 0.9);
+                const maxHeight = Math.min(400, window.innerHeight * 0.6);
+                const size = Math.floor(Math.min(maxWidth, maxHeight) / gridSize) * gridSize;
+                canvas.width = size;
+                canvas.height = size;
+                tileCount = canvas.width / gridSize;
                 drawGame();
             }
-        }
 
-        function handleDirection(direction) {
-            if (!gameRunning) return;
-            switch(direction) {
-                case 'up': if (dy !== 1) { dx = 0; dy = -1; } break;
-                case 'down': if (dy !== -1) { dx = 0; dy = 1; } break;
-                case 'left': if (dx !== 1) { dx = -1; dy = 0; } break;
-                case 'right': if (dx !== -1) { dx = 1; dy = 0; } break;
+            function randomFood() {
+                food = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount)
+                };
             }
-        }
 
-        function openSettings() {
-            document.getElementById('settingsModal').style.display = 'flex';
-            document.getElementById('modalHighScore').textContent = highScore;
-            document.getElementById('modalGameLevel').textContent = currentLevel;
-            document.getElementById('modalGameSpeed').textContent = speedMultiplier + 'x';
-        }
-        
-        function closeSettings() {
-            document.getElementById('settingsModal').style.display = 'none';
-        }
-        
-        function initializeApp() {
-            resizeCanvas();
-            resetGame();
+            function drawGame() {
+                if (!ctx || !gameRunning) return;
+                const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                gradient.addColorStop(0, '#2c1810');
+                gradient.addColorStop(1, '#1a0f08');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                for (let i = 0; i < tileCount; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * gridSize, 0);
+                    ctx.lineTo(i * gridSize, canvas.height);
+                    ctx.moveTo(0, i * gridSize);
+                    ctx.lineTo(canvas.width, i * gridSize);
+                    ctx.stroke();
+                }
+                snake.forEach((segment, index) => {
+                    const segmentGradient = ctx.createRadialGradient(segment.x * gridSize + gridSize / 2, segment.y * gridSize + gridSize / 2, 0, segment.x * gridSize + gridSize / 2, segment.y * gridSize + gridSize / 2, gridSize / 2);
+                    if (index === 0) {
+                        segmentGradient.addColorStop(0, '#00ff41');
+                        segmentGradient.addColorStop(1, '#00cc33');
+                    } else {
+                        const alpha = 1 - (index / snake.length) * 0.3;
+                        segmentGradient.addColorStop(0, `rgba(0, 255, 65, ${alpha})`);
+                        segmentGradient.addColorStop(1, `rgba(0, 204, 51, ${alpha})`);
+                    }
+                    ctx.fillStyle = segmentGradient;
+                    ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 1, gridSize - 1);
+                });
+                const foodGradient = ctx.createRadialGradient(food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2, 0, food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2, gridSize / 2);
+                foodGradient.addColorStop(0, '#ff4444');
+                foodGradient.addColorStop(1, '#cc2222');
+                ctx.fillStyle = foodGradient;
+                ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+            }
+
+            function moveSnake() {
+                if (!gameRunning) return;
+                const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+                if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount || snake.some(s => s.x === head.x && s.y === head.y)) {
+                    return gameOver();
+                }
+                snake.unshift(head);
+                if (head.x === food.x && head.y === food.y) {
+                    score += 10;
+                    scoreElement.textContent = score;
+                    const newLevel = Math.floor(score / 50) + 1;
+                    if (newLevel > currentLevel) {
+                        currentLevel = newLevel;
+                        gameSpeed = Math.max(50, 150 - (currentLevel - 1) * 10);
+                        speedMultiplier = Math.round((150 / gameSpeed) * 10) / 10;
+                        playSound(880, 300, 'triangle');
+                    }
+                    playSound(660, 150, 'square');
+                    randomFood();
+                } else {
+                    snake.pop();
+                }
+            }
+
+            function gameLoop() {
+                if (!gameRunning) return;
+                moveSnake();
+                drawGame();
+                gameLoopTimeout = setTimeout(gameLoop, gameSpeed);
+            }
+
+            function gameOver() {
+                gameRunning = false;
+                clearTimeout(gameLoopTimeout);
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('snakeHighScore', highScore);
+                    playSound(1047, 500, 'triangle');
+                } else {
+                    playSound(220, 500, 'sawtooth');
+                }
+                finalScoreElement.textContent = score;
+                bestScoreElement.textContent = highScore;
+                snakeLengthElement.textContent = snake.length;
+                gameOverElement.style.display = 'block';
+            }
+
+            function resetGame() {
+                if (gameLoopTimeout) clearTimeout(gameLoopTimeout);
+                snake = [{ x: 10, y: 10 }];
+                dx = 0;
+                dy = 0;
+                score = 0;
+                currentLevel = 1;
+                gameSpeed = 150;
+                speedMultiplier = 1;
+                scoreElement.textContent = score;
+                gameRunning = true;
+                gameOverElement.style.display = 'none';
+                randomFood();
+                playSound(523, 200);
+                gameLoop();
+            }
+
+            function handleDirection(direction) {
+                if (!gameRunning) return;
+                switch(direction) {
+                    case 'up': if (dy !== 1) { dx = 0; dy = -1; } break;
+                    case 'down': if (dy !== -1) { dx = 0; dy = 1; } break;
+                    case 'left': if (dx !== 1) { dx = -1; dy = 0; } break;
+                    case 'right': if (dx !== -1) { dx = 1; dy = 0; } break;
+                }
+            }
+
+            function openSettings() {
+                document.getElementById('settingsModal').style.display = 'flex';
+                document.getElementById('modalHighScore').textContent = highScore;
+                document.getElementById('modalGameLevel').textContent = currentLevel;
+                document.getElementById('modalGameSpeed').textContent = speedMultiplier + 'x';
+            }
+
+            function closeSettings() {
+                document.getElementById('settingsModal').style.display = 'none';
+            }
 
             window.addEventListener('resize', resizeCanvas);
-
             document.addEventListener('keydown', (e) => {
                 if (!gameRunning && e.code === 'Space') {
                     resetGame();
@@ -561,27 +518,23 @@
                 }
                 handleDirection({ 'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right' }[e.code]);
             });
-
             document.querySelectorAll('.touch-btn').forEach(btn => {
-                const handleTouch = (e) => {
+                btn.addEventListener('click', (e) => {
                     e.preventDefault();
                     handleDirection(e.currentTarget.dataset.direction);
-                };
-                btn.addEventListener('touchstart', handleTouch);
-                btn.addEventListener('click', handleTouch);
+                });
             });
-
             document.getElementById('resetBtn').addEventListener('click', resetGame);
             gameOverElement.addEventListener('click', () => { if (!gameRunning) resetGame(); });
-
             document.getElementById('settingsBtn').addEventListener('click', openSettings);
             document.getElementById('closeSettingsBtn').addEventListener('click', closeSettings);
             document.getElementById('settingsModal').addEventListener('click', (e) => {
                 if (e.target.id === 'settingsModal') closeSettings();
             });
-        }
 
-        document.addEventListener('DOMContentLoaded', initializeApp);
+            resizeCanvas();
+            resetGame();
+        });
     </script>
 </body>
 </html>

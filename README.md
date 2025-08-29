@@ -27,7 +27,8 @@ html5/
 │   ├── color_picker.html        # Палитра цветов
 │   ├── password_generator.html  # Генератор паролей
 │   ├── qr_generator.html        # QR генератор
-│   └── text_editor.html         # Текстовый редактор
+│   ├── text_editor.html         # Текстовый редактор
+│   └── todo_list.html           # Список дел
 └── README.md                     # Данная документация
 ```
 
